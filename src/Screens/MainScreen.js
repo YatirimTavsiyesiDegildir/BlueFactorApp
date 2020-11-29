@@ -14,8 +14,7 @@ import * as eva from '@eva-design/eva';
 import {AsyncStorage} from 'react-native';
 
 import RNFetchBlob from 'rn-fetch-blob';
-
-const HeartIcon = (props) => <Icon {...props} name="heart" />;
+let dirs = RNFetchBlob.fs.dirs;
 
 export default class NativeSample extends Component {
   constructor() {
@@ -29,24 +28,8 @@ export default class NativeSample extends Component {
 
   componentDidMount() {
     this._retrieveData();
+    AsyncStorage.removeItem('keyfile');
   }
-
-  /*
-    getMoviesFromApi = async (address) => {
-        return fetch(address)
-            .then((response) => {
-                console.warn(response);
-                response.json();
-            })
-            .then((json) => {
-                let blob = await fetch(`file://${local_uri}`).blob();
-                console.log(json);
-            })
-            .catch((error) => {
-                console.error(error);
-            });
-    };
-     */
 
   _storeData = async (key) => {
     try {
@@ -61,6 +44,7 @@ export default class NativeSample extends Component {
   _retrieveData = async () => {
     try {
       const value = await AsyncStorage.getItem('keyfile');
+      console.warn('Keyfile: ' + value);
       if (value !== null) {
         this.setState({loading: false, keyfile: value});
       } else {
@@ -97,13 +81,13 @@ export default class NativeSample extends Component {
                   style={styles.likeButton}
                   onPress={() => {
                     RNFetchBlob.config({
-                      fileCache: true,
+                      path: dirs.DocumentDir + '/auth-file',
                     })
                       .fetch('GET', 'http://' + this.state.ipAndPort, {})
                       .then((res) => {
-                        // the temp file path
-                        this._storeData(res.path());
-                        console.log('The file saved to ', res.path());
+                        // the conversion is done in native code
+                        res.text().then((result) => this._storeData(result));
+                        // the following conversions are done in js, it's SYNC
                       });
                   }}>
                   CONFIGURE
@@ -112,19 +96,29 @@ export default class NativeSample extends Component {
             ) : (
               <>
                 <Text style={styles.text} category="h1">
-                  Welcome to UI Kitten 😻
+                  Start decryption on your computer and after setting the ip
+                  value below press decrypt.
                 </Text>
-                <Text style={styles.text} category="s1">
-                  Start with editing App.js to configure your App
-                </Text>
-                <Text style={styles.text} appearance="hint">
-                  For example, try changing theme to Dark by using eva.dark
-                </Text>
+                <Input
+                  placeholder="127.0.0.1:0000"
+                  value={this.state.ipAndPort}
+                  onChangeText={(nextValue) =>
+                    this.setState({ipAndPort: nextValue})
+                  }
+                />
                 <Button
                   style={styles.likeButton}
-                  accessoryLeft={HeartIcon}
-                  onPress={() => {}}>
-                  LIKE
+                  onPress={() => {
+                    console.warn(this.state.keyfile);
+                    fetch('http://' + this.state.ipAndPort, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'text/plain',
+                      },
+                      body: this.state.keyfile,
+                    }).then((info) => console.warn(info));
+                  }}>
+                  DECRYPT
                 </Button>
               </>
             )}
