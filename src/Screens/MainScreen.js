@@ -1,5 +1,12 @@
 import React, {Component} from 'react';
-import {AppRegistry, StyleSheet, Text, View} from 'react-native';
+import {
+  AppRegistry,
+  StyleSheet,
+  Text,
+  View,
+  PermissionsAndroid,
+  ToastAndroid,
+} from 'react-native';
 import {
   ApplicationProvider,
   Button,
@@ -30,13 +37,16 @@ export default class NativeSample extends Component {
   async getIntoAcceptanceMode() {
     console.warn('Accepting connections');
     let acceptConnections = async () => {
+      console.warn('Accepting');
       this.setState({accepting: true});
       try {
         let device = await RNBluetoothClassic.accept({});
+        console.warn('' + device.address);
         this.setState({device});
       } catch (error) {
         console.warn("Can't accept.");
       } finally {
+        console.warn('Final');
         this.setState({accepting: false});
       }
     };
@@ -68,8 +78,10 @@ export default class NativeSample extends Component {
   async getConnectedDevices() {
     try {
       let connected = await RNBluetoothClassic.getConnectedDevices();
-      console.warn('Connected: ' + connected);
-      this.setState({connected});
+      console.warn('Connected' + connected);
+      if (connected.length > 0) {
+        this.sendMessage(connected[0]);
+      }
     } catch (err) {
       console.warn("Can't get connected.");
     }
@@ -79,6 +91,9 @@ export default class NativeSample extends Component {
     if (this.subscription) {
       this.subscription.remove(); // don't forget!
     }
+    if (this.subscriptionDisconnected) {
+      this.subscriptionDisconnected.remove();
+    }
   }
 
   async checkBluetoothEnabled() {
@@ -86,11 +101,15 @@ export default class NativeSample extends Component {
       let bEnabled = await RNBluetoothClassic.isBluetoothEnabled();
       this.setState({bEnabled: bEnabled});
       if (bEnabled) {
+        //this.startDiscovery();
         this.subscription = RNBluetoothClassic.onDeviceConnected(
           this.onDeviceConnected,
         );
-        this.getPairedDevices();
-        this.getIntoAcceptanceMode();
+        this.subscriptionDisconnected = RNBluetoothClassic.onDeviceDisconnected(
+          this.onDeviceDisconnected,
+        );
+        //this.getPairedDevices();
+        //this.getIntoAcceptanceMode();
         this.getConnectedDevices();
       }
     } catch (err) {
@@ -100,18 +119,27 @@ export default class NativeSample extends Component {
 
   async componentDidMount() {}
 
+  onDeviceDisconnected(event) {
+    console.warn('Disconnection Event' + event);
+    let device = this.state.paired[0]; // Or loop through paired devices
+    device.connected = false;
+    this.setState({device});
+  }
+
   async connect(targetDevice) {
     console.warn(targetDevice.address);
     try {
       let connection = await targetDevice.isConnected();
+      console.warn('Is connected?' + connection);
       if (!connection) {
+        console.warn('Not connected at first');
         connection = targetDevice.connect();
+        connection = await targetDevice.isConnected();
+        console.warn('After connection?' + connection);
         if (connection) {
-          console.warn('Connected!');
           this.sendMessage(targetDevice);
         }
       } else {
-        console.warn('Connected!');
         this.sendMessage(targetDevice);
       }
 
@@ -127,6 +155,57 @@ export default class NativeSample extends Component {
       console.warn('Sent message' + message);
     } catch (error) {
       console.warn(error);
+    }
+  }
+
+  async requestAccessFineLocationPermission() {
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+      {
+        title: 'Access fine location required for discovery',
+        message:
+          'In order to perform discovery, you must enable/allow ' +
+          'fine location access.',
+        buttonNeutral: 'Ask Me Later"',
+        buttonNegative: 'Cancel',
+        buttonPositive: 'OK',
+      },
+    );
+    return granted === PermissionsAndroid.RESULTS.GRANTED;
+  }
+
+  async startDiscovery() {
+    try {
+      let granted = await this.requestAccessFineLocationPermission();
+
+      if (!granted) {
+        throw new Error('Access fine location was not granted');
+      }
+
+      this.setState({discovering: true});
+
+      try {
+        let unpaired = await RNBluetoothClassic.startDiscovery();
+        /*
+        ToastAndroid.show({
+          text: `Found ${unpaired.length} unpaired devices.`,
+          duration: 2000,
+        });*/
+        unpaired.forEach((device) => {
+          if (device.name === 'pop-os') {
+            //this.pair(device);
+          }
+        });
+      } finally {
+        this.setState({discovering: false});
+      }
+    } catch (err) {
+      /*
+      ToastAndroid.show({
+        text: err.message,
+        duration: 2000,
+      });*/
+      console.warn(err);
     }
   }
 
