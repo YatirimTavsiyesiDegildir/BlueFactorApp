@@ -23,6 +23,8 @@ import {
 import { EvaIconsPack } from '@ui-kitten/eva-icons';
 import * as eva from '@eva-design/eva';
 
+import RNBluetoothClassic, { BluetoothEventType } from 'react-native-bluetooth-classic';
+
 /**
  * Use any valid `name` property from eva icons (e.g `github`, or `heart-outline`)
  * https://akveo.github.io/eva-icons
