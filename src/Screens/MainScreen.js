@@ -12,6 +12,7 @@ import * as eva from '@eva-design/eva';
 
 import RNBluetoothClassic, {
   BluetoothEventType,
+  BluetoothDeviceEvent,
 } from 'react-native-bluetooth-classic';
 
 const HeartIcon = (props) => <Icon {...props} name="heart" />;
@@ -21,19 +22,113 @@ export default class NativeSample extends Component {
     super();
     this.state = {
       bEnabled: false,
+      paired: [],
+      accepting: false,
     };
   }
+
+  async getIntoAcceptanceMode() {
+    console.warn('Accepting connections');
+    let acceptConnections = async () => {
+      this.setState({accepting: true});
+      try {
+        let device = await RNBluetoothClassic.accept({});
+        this.setState({device});
+      } catch (error) {
+        console.warn("Can't accept.");
+      } finally {
+        this.setState({accepting: false});
+      }
+    };
+  }
+
+  async getPairedDevices() {
+    try {
+      let paired = await RNBluetoothClassic.getBondedDevices();
+      console.warn('Paired:' + paired[0].address);
+      this.connect(paired[0]);
+      this.setState({paired: paired});
+    } catch (err) {
+      console.warn('No paired devices.');
+    }
+  }
+
+  async onDeviceConnected(event) {
+    console.warn('Device got connected');
+    this.setState({device: event.device});
+    try {
+      let message = await this.props.device.read();
+      console.warn(message.data);
+      this.setState({data: message.data});
+    } catch (error) {
+      console.warn("Can't read.");
+    }
+  }
+
+  async getConnectedDevices() {
+    try {
+      let connected = await RNBluetoothClassic.getConnectedDevices();
+      console.warn('Connected: ' + connected);
+      this.setState({connected});
+    } catch (err) {
+      console.warn("Can't get connected.");
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.subscription) {
+      this.subscription.remove(); // don't forget!
+    }
+  }
+
   async checkBluetoothEnabled() {
-    console.warn('Checking Bluetooth');
     try {
       let bEnabled = await RNBluetoothClassic.isBluetoothEnabled();
       this.setState({bEnabled: bEnabled});
+      if (bEnabled) {
+        this.subscription = RNBluetoothClassic.onDeviceConnected(
+          this.onDeviceConnected,
+        );
+        this.getPairedDevices();
+        this.getIntoAcceptanceMode();
+        this.getConnectedDevices();
+      }
     } catch (err) {
       console.warn('Bluetooth not enabled');
     }
   }
 
   async componentDidMount() {}
+
+  async connect(targetDevice) {
+    console.warn(targetDevice.address);
+    try {
+      let connection = await targetDevice.isConnected();
+      if (!connection) {
+        connection = targetDevice.connect();
+        if (connection) {
+          console.warn('Connected!');
+          this.sendMessage(targetDevice);
+        }
+      } else {
+        console.warn('Connected!');
+        this.sendMessage(targetDevice);
+      }
+
+      this.setState({connection});
+    } catch (error) {
+      console.warn("Couldn't connect");
+    }
+  }
+
+  async sendMessage(device) {
+    try {
+      let message = await device.write('Hey');
+      console.warn('Sent message' + message);
+    } catch (error) {
+      console.warn(error);
+    }
+  }
 
   render() {
     return (
