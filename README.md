@@ -22,3 +22,11 @@ Below is an example usecase for using the BlueFactor with an Android phone.
 
 ## Testing for iOS
 Contributions are welcome.
+
+## Authors
+- [Dogu Deniz UGUR](https://github.com/DoguD)
+- [Cinar Kiziltepe](https://github.com/Oakknight)
+- [Baykam Say](https://github.com/baykamsay)
+
+## Contributing
+Pull requests are welcome.
