@@ -4,7 +4,7 @@ You can visit the core application for more information: https://github.com/Blue
 
 ## How to Use
 Below is an example usecase for using the BlueFactor with an Android phone.
-- Download and install the latest APK file.
+- Download and install the [latest APK file](https://github.com/Blue-Factor/BlueFactorApp/releases/download/v0.0.1/app-release.apk).
 
 ## Testing for Android
 #### Prequisites
